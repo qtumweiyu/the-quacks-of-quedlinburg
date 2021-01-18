@@ -26,23 +26,12 @@ module.exports = appInfo => {
     config.paramsMap = paramsMap();
     config.errorCode = errcode();
 
-    exports.mysql = {
+    config.mysql = {
         // 单数据库信息配置
-        client: {
-            // host
-            host: 'localhost',
-            // 端口号
-            port: '3306',
-            // 用户名
-            user: 'root',
-            // 密码
-            password: '',
-            // 数据库名
-            database: 'quacks',
-        },
+        client: require('./mysql.dev'),
     };
 
-    exports.redis = {
+    config.redis = {
         client: {
             host: '127.0.0.1',
             port: 6379,
@@ -51,7 +40,7 @@ module.exports = appInfo => {
         },
     };
 
-    exports.io = {
+    config.io = {
         redis: {
             host: '127.0.0.1',
             port: 6379,

@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/qtumweiyu/the-quacks-of-quedlinburg#readme",
   "dependencies": {
+    "basic-auth": "^2.0.1",
     "egg": "^2.29.1",
     "egg-bin": "^4.15.0",
     "egg-logger": "^2.4.2",
@@ -27,6 +28,10 @@
     "egg-redis": "^2.4.0",
     "egg-scripts": "^2.13.0",
     "egg-socket.io": "^4.1.6",
-    "lodash": "^4.17.20"
+    "lodash": "^4.17.20",
+    "md5": "^2.3.0",
+    "mysql2": "^2.2.5",
+    "sequelize": "^6.3.5",
+    "uuid": "^3.4.0"
   }
 }

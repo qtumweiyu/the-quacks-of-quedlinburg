@@ -1,5 +1,3 @@
-'use strict';
-
 const Pagination = require('./app/lib/pagination');
 const Model = require('./app/model/model');
 const Locker = require('./app/lib/locker');

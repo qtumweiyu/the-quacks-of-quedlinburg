@@ -9,18 +9,7 @@ module.exports = appInfo => {
 
     exports.mysql = {
         // 单数据库信息配置
-        client: {
-            // host
-            host: 'localhost',
-            // 端口号
-            port: '3306',
-            // 用户名
-            user: 'root',
-            // 密码
-            password: '',
-            // 数据库名
-            database: 'quacks',
-        },
+        client: require('./mysql.prod'),
     };
 
     exports.redis = {

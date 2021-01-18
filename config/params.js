@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = () => {
     return {
         //METHOD api name: {
@@ -10,5 +8,14 @@ module.exports = () => {
         // api
         // common
         'GET /': {},
+        // passport
+        'POST /passport/register': {
+            name: [true, 'string|1|255'],
+            password: [true, 'string'],
+        },
+        'POST /passport/login': {
+            name: [true, 'string|1|255'],
+            password: [true, 'string'],
+        },
     };
 };
