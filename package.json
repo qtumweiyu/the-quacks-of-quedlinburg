@@ -1,0 +1,32 @@
+{
+  "name": "the-quacks-of-quedlinburg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "egg-scripts start --daemon --title=the-quacks-of-quedlinburg --port=2021 --sticky",
+    "stop": "egg-scripts stop --title=the-quacks-of-quedlinburg --port=2021",
+    "dev": "egg-bin dev --port=2021 --sticky",
+    "debug": "egg-bin debug"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qtumweiyu/the-quacks-of-quedlinburg.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/qtumweiyu/the-quacks-of-quedlinburg/issues"
+  },
+  "homepage": "https://github.com/qtumweiyu/the-quacks-of-quedlinburg#readme",
+  "dependencies": {
+    "egg": "^2.29.1",
+    "egg-bin": "^4.15.0",
+    "egg-logger": "^2.4.2",
+    "egg-mysql": "^3.0.0",
+    "egg-redis": "^2.4.0",
+    "egg-scripts": "^2.13.0",
+    "egg-socket.io": "^4.1.6",
+    "lodash": "^4.17.20"
+  }
+}
