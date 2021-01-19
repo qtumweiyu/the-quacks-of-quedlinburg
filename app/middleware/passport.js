@@ -14,6 +14,7 @@ module.exports = () => {
                 if (user) {
                     user.session = session;
                     user.token = token;
+                    delete user.hashPassword;
                     ctx.user = user;
                     await ctx.app.model.session.refresh(token);
                 }

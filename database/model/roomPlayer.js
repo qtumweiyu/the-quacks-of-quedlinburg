@@ -1,20 +1,21 @@
 const { DataTypes } = require('sequelize');
 
 const define = sequelize => {
-    sequelize.define('user', {
-        id: {
+    sequelize.define('room_player', {
+        roomId: {
             type: DataTypes.UUID,
             primaryKey: true,
         },
-        name: {
-            type: DataTypes.STRING,
-            allowNull: false,
+        playerId: {
+            type: DataTypes.UUID,
+            primaryKey: true,
         },
-        hashPassword: {
-            type: DataTypes.STRING,
+        status: {
+            type: DataTypes.TINYINT.UNSIGNED,
             allowNull: false,
+            defaultValue: 0,
         },
-        createdAt: {
+        joinAt: {
             type: DataTypes.INTEGER.UNSIGNED,
             allowNull: false,
         },
@@ -22,7 +23,7 @@ const define = sequelize => {
         freezeTableName: true,
         timestamps: false,
         charset: 'utf8mb4',
-        indexes: [{ unique: true, fields: ['name'] }],
+        indexes: [{ unique: true, fields: ['playerId'] }, { fields: ['roomId', 'joinAt', 'playerId'] }],
     });
 };
 

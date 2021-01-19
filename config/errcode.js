@@ -30,5 +30,30 @@ module.exports = () => {
             code: 30001,
             message: 'Name exists',
         },
+        // room
+        ROOM_NOT_EXISTS: {
+            code: 40001,
+            message: 'Room not exists',
+        },
+        ROOM_CANNOT_CREATE_MORE_ROOMS: {
+            code: 40002,
+            message: 'Cannot create more rooms',
+        },
+        ROOM_CANNOT_JOIN_MORE_ROOMS: {
+            code: 40003,
+            message: 'Cannot join more rooms',
+        },
+        ROOM_IS_FULL: {
+            code: 40004,
+            message: 'Room is full',
+        },
+        ROOM_PLAYER_IS_PLAYING: {
+            code: 40004,
+            message: 'Room player is playing',
+        },
+        ROOM_PASSWORD_ERROR: {
+            code: 40005,
+            message: 'Room password error',
+        },
     };
 };

@@ -41,13 +41,32 @@ module.exports = () => {
                 }
                 break;
             case 'int' :
-                res = _.isSafeInteger(Number(value)) && value >= 0;
+                value = Number(value);
+                res = _.isSafeInteger(value);
+                if (res && options.length > 0) {
+                    res = value >= options[0];
+                    if (res) {
+                        if (options.length > 1) {
+                            res = value <= options[1];
+                            if (!res) {
+                                msg = `should equal or less than ${options[1]}`;
+                            }
+                        }
+                    } else {
+                        msg = `should equal or great than ${options[0]}`;
+                    }
+                }
                 break;
             case 'float' :
                 res = _.isNumber(Number(value));
                 break;
             case 'bool' :
-                res = /^(0|1)$/.test(value) || _.isBoolean(value);
+                if (typeof value === 'string') {
+                    value = value.toLowerCase();
+                    res = value === 'true' || value === 'false';
+                } else {
+                    res = /^(0|1)$/.test(value) || _.isBoolean(value);
+                }
                 break;
             case 'object' :
                 res = _.isObjectLike(value);
@@ -65,7 +84,6 @@ module.exports = () => {
         switch (type) {
             case 'regex' :
             case 'string' :
-            case 'shareStatus' :
                 res = value;
                 break;
             case 'int' :
@@ -75,7 +93,12 @@ module.exports = () => {
                 res = parseFloat(value);
                 break;
             case 'bool' :
-                res = _.isBoolean(value) ? value : !!parseInt(value);
+                if (typeof value === 'string') {
+                    value = value.toLowerCase();
+                    res = value === 'true';
+                } else {
+                    res = _.isBoolean(value) ? value : !!parseInt(value);
+                }
                 break;
             case 'object' :
                 res = JSON.parse(value);
@@ -88,6 +111,10 @@ module.exports = () => {
     return async function params(ctx, next) {
         const paramsMap = ctx.app.config.paramsMap;
         const method = ctx.request.method.toUpperCase();
+        if (method !== 'GET' && method !== 'POST') {
+            await next();
+            return;
+        }
         const router = ctx.router.match(ctx.request.path).path[0];
         if (!router || !router.methods.includes(method)) {
             ctx.throw(501);
@@ -103,7 +130,17 @@ module.exports = () => {
                 params[item.name] = paramParseRes[index + 1];
             });
         }
+        const level = paramsConfig['_level'];
+        if (level > 0) {
+            if (!ctx.user) {
+                // throw
+                ctx.app.model.passport.loginRequired();
+            }
+        }
         Object.keys(paramsConfig).forEach(key => {
+            if (key.startsWith('_')) {
+                return;
+            }
             let value = null;
             if (router.path.indexOf(`:${key}`) >= 0) {
                 value = params[key];

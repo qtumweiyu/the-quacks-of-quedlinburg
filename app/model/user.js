@@ -23,7 +23,6 @@ class User extends baseModel {
         } else {
             throw this.app.config.errorCode.USER_NAME_EXISTS;
         }
-
     }
 }
 

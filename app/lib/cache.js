@@ -57,6 +57,10 @@ class Cache {
         return this.redis.ttl(`${this.prefix}::${key}`, ...args);
     }
 
+    async expire(key, ...args) {
+        return await this.redis.expire(`${this.prefix}::${key}`, ...args);
+    }
+
     async fetchWithCache(key, ttl, dataBuilder) {
         const res = await this.get(key);
         if (res) {

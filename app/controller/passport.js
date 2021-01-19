@@ -1,6 +1,6 @@
-const Controller = require('egg').Controller;
+const BaseController = require('./baseController');
 
-class PassportController extends Controller {
+class PassportController extends BaseController {
     async register() {
         const { name, password } = this.ctx.request.params;
         this.ctx.body = await this.app.model.passport.register(name, password);
