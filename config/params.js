@@ -40,5 +40,9 @@ module.exports = () => {
             roomId: [true, 'string|36'],
             force: [true, 'bool'],
         },
+        'POST /room/destroy': {
+            _level: 1,
+            roomId: [true, 'string|36'],
+        },
     };
 };

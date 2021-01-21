@@ -47,6 +47,12 @@ module.exports = appInfo => {
             password: '',
             db: 1,
         },
+        namespace: {
+            '/room': {
+                connectionMiddleware: ['passport'],
+                packetMiddleware: ['response'],
+            },
+        },
     };
 
     return config;

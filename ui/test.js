@@ -42,6 +42,19 @@ window.onload = () => {
         },
     };
 
+    const socket = io(`${host}/room`);
+    socket.on('connect', () => {
+        const id = socket.id;
+
+        socket.on(id, data  => {
+            console.log(data);
+        });
+
+        setTimeout(() => {
+            socket.emit('enter', 'hi');
+        }, 1000);
+    });
+
     const api = {
         passportLogin: async (name, password) => {
             const res = await client.post('/passport/login', {

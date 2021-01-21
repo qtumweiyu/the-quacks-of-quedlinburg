@@ -55,5 +55,9 @@ module.exports = () => {
             code: 40005,
             message: 'Room password error',
         },
+        ROOM_CANNOT_MODIFY: {
+            code: 40006,
+            message: 'You cannot modify room',
+        },
     };
 };

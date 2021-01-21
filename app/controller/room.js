@@ -24,6 +24,12 @@ class RoomController extends BaseController {
         const room = await this.fetchRoom(roomId);
         this.ctx.body = await this.app.model.room.leave(room, this.ctx.user, force);
     }
+
+    async destroy() {
+        const { roomId } = this.ctx.request.params;
+        const room = await this.fetchCanModifyRoom(roomId, this.ctx.user.id);
+        this.ctx.body = await this.app.model.room.destroy(room);
+    }
 }
 
 module.exports = RoomController;
