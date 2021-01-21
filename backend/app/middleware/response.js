@@ -1,7 +1,9 @@
-'use strict';
-
 module.exports = () => {
     return async function response(ctx, next) {
+
+        ctx.set('Access-Control-Allow-Origin', '*');
+        ctx.set('Access-Control-Allow-Headers', 'Authorization');
+
         try {
             await next();
             if (ctx.response.status === 302) {
