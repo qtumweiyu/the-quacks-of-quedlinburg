@@ -59,5 +59,9 @@ module.exports = () => {
             code: 40006,
             message: 'You cannot modify room',
         },
+        ROOM_USER_NOT_IN: {
+            code: 40007,
+            message: 'You are not in this room',
+        },
     };
 };
