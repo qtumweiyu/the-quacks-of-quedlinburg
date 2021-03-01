@@ -21,6 +21,11 @@ class IoHelper {
         }
     }
 
+    send(socket, data) {
+        const nsp = this.getNsp(socket);
+        nsp.emit(socket.id, data);
+    }
+
     getNsp(socket) {
         return this.app.io.of(socket.nsp.name);
     }
@@ -35,12 +40,16 @@ class IoHelper {
         };
     }
 
-    statusPack(status) {
-        return this.pack('status', status);
+    passportPack(user) {
+        return this.pack('passport', user);
     }
 
-    alterPack(payload) {
-        return this.pack('alter', payload);
+    statePack(state) {
+        return this.pack('state', state);
+    }
+
+    alertPack(payload) {
+        return this.pack('alert', payload);
     }
 
     closePack(payload) {

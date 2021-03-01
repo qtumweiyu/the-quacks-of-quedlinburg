@@ -1,108 +1,93 @@
 window.onload = () => {
     const host = 'http://127.0.0.1:2021';
 
-    const auth = {
-        name: '',
-        pass: '',
-    };
-
-    let roomList = [];
-
-    const client = {
-        get: async url => {
-            let res = await fetch(`${host}${url}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Basic ${btoa(auth.name + ':' + auth.pass)}`,
-                },
-            });
-            res = await res.json();
-            if (res.success) {
-                return res.data;
-            } else {
-                throw res.err;
-            }
-        },
-        post: async (url, data) => {
-            data = new URLSearchParams(data);
-            let res = await fetch(`${host}${url}`, {
-                method: 'POST',
-                body: data.toString(),
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Authorization': `Basic ${btoa(auth.name + ':' + auth.pass)}`,
-                },
-            });
-            res = await res.json();
-            if (res.success) {
-                return res.data;
-            } else {
-                throw res.err;
-            }
-        },
-    };
-
     const socket = io(`${host}/room`);
     socket.on('connect', () => {
         const id = socket.id;
 
-        socket.on(id, data  => {
-            console.log(data);
+        socket.on(id, data => {
+            console.log(id, data);
+            handleData(data);
         });
 
-        setTimeout(() => {
-            socket.emit('enter', 'hi');
-        }, 1000);
+        socket.on('broadcast', data => {
+            console.log('broadcast', data);
+            handleData(data);
+        });
     });
 
-    const api = {
-        passportLogin: async (name, password) => {
-            const res = await client.post('/passport/login', {
-                name, password,
-            });
-            auth.name = res.id;
-            auth.pass = res.token;
-            return res;
-        },
-        passportRegister: async (name, password) => {
-            const res = await client.post('/passport/register', {
-                name, password,
-            });
-            auth.name = res.id;
-            auth.pass = res.token;
-            return res;
-        },
-        userInfo: async () => {
-            return client.get('/user/info');
-        },
-        roomList: async () => {
-            const list = await client.get('/room/list');
-            roomList = list;
-            return list;
-        },
-        roomCreate: async (name, password, size) => {
-            return client.post('/room/create', {
-                name,
-                password,
-                size,
-            });
-        },
-        roomJoin: async (index, password) => {
-            return client.post('/room/join', {
-                roomId: roomList[index].id,
-                password,
-            });
-        },
-        roomLeave: async (index, force) => {
-            return client.post('/room/leave', {
-                roomId: roomList[index].id,
-                force,
-            });
-        },
+    const handleData = data => {
+        const { type, payload } = data;
+        switch (type) {
+            case 'passport':
+                handlePassport(payload);
+                break;
+            case 'state':
+                handleState(payload);
+                break;
+            case 'alert':
+                alert(payload.message);
+                break;
+            default:
+                alert(`unknown type: ${type}`);
+        }
     };
 
-    window.tools = {
-        client,
-        api,
+    const handlePassport = user => {
+        if (user === null) {
+            window.localStorage.removeItem('id');
+            login();
+        } else {
+            window.localStorage.setItem('id', user.id);
+            if (user.room) {
+                handleState(user.room);
+            }
+        }
+    };
+
+    const handleState = state => {
+        console.log('state', state);
+    };
+
+    const login = () => {
+        const id = window.localStorage.getItem('id');
+        if (id) {
+            socket.emit('login', { id });
+        } else {
+            let name = window.localStorage.getItem('name');
+            if (!name) {
+                name = prompt('请输入一个名字');
+                window.localStorage.setItem('name', name);
+            }
+            socket.emit('login', { name });
+        }
+    };
+
+    const createRoom = size => {
+        socket.emit('create', { size });
+    };
+
+    const joinRoom = password => {
+        socket.emit('join', { password });
+    };
+
+    const leaveRoom = () => {
+        socket.emit('leave');
+    };
+
+    const readyGame = () => {
+        socket.emit('ready');
+    };
+
+    setTimeout(() => {
+        login();
+    }, 1000);
+
+    window.api = {
+        login,
+        createRoom,
+        joinRoom,
+        leaveRoom,
+        readyGame,
     };
 };

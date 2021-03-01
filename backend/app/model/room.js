@@ -1,139 +1,217 @@
-const baseModel = require('./baseMysqlModel');
+const BaseModel = require('./baseModel');
 const uuid = require('uuid/v4');
 
-class Room extends baseModel {
+class Room extends BaseModel {
     init() {
-        this.statusMap = {
-            FREE: 0,
-            PLAYING: 1,
-        };
-        //socket io
-        this.nsp = this.app.io.of('/room');
+        this.passwordManager = new PasswordManager(this.app);
+        this.stateManager = new StateManager(this.app);
     }
 
-    setTableName() {
-        this.tableName = 'room';
+    async broadcast(id) {
+        const nspName = '/room';
+        const nsp = this.app.io.of(nspName);
+        this.app.ioHelper.broadcast(nsp, id, this.app.ioHelper.statePack(await this.load(id)));
     }
 
-    async create(name, password, size, user) {
-        const res = await this.findOrCreate({
-            createdBy: user.id,
-        }, {
-            id: uuid(),
-            name,
-            password,
-            size,
-            owner: user.id,
-            status: this.statusMap.FREE,
-            createdAt: Date.now() / 1000 | 0,
-        });
-        if (res.isNew) {
-            const room = res.data;
-            await this.join(room, user);
-            return room;
-        } else {
-            throw this.app.config.errorCode.ROOM_CANNOT_CREATE_MORE_ROOMS;
+    async load(id) {
+        return this.stateManager.load(id);
+    }
+
+    async create(size, user) {
+        const id = uuid();
+        const room = await this.stateManager.create(id, size, user);
+        await this.broadcast(id);
+        return room;
+    }
+
+    async join(password, user) {
+        const id = await this.passwordManager.find(password);
+        if (!id) {
+            throw this.app.config.errorCode.ROOM_NOT_EXISTS;
         }
+        const room = await this.stateManager.join(id, user);
+        await this.broadcast(id);
+        return room;
     }
 
-    async join(room, password, player) {
-        if (password !== room.password) {
-            throw this.app.config.errorCode.ROOM_PASSWORD_ERROR;
+    async leave(user) {
+        if (!user.roomId) {
+            throw this.app.config.errorCode.ROOM_USER_NOT_IN;
         }
-        await this.app.model.roomPlayer.join(room, player);
-        await this.broadcast(room);
-        return true;
+        const id = user.roomId;
+        const room = await this.stateManager.leave(user);
+        await this.broadcast(id);
+        return room;
     }
 
-    async leave(room, player, force = false) {
-        await this.app.model.roomPlayer.leave(room, player, force);
-        await this.broadcast(room);
-        const playerList = await this.getPlayerList(room);
-        if (playerList.length > 0) {
-            await this.setOwner(room, playerList[0]);
-        } else {
-            await this.destroy(room);
+    async ready(user) {
+        if (!user.roomId) {
+            throw this.app.config.errorCode.ROOM_USER_NOT_IN;
         }
-        return true;
+        const id = user.roomId;
+        await this.stateManager.ready(user);
+        await this.broadcast(id);
     }
 
-    async getPlayerList(room) {
-        return this.app.model.roomPlayer.getPlayerList(room);
-    }
-
-    async setOwner(room, player) {
-        await this.update({
-            id: room.id,
-            owner: player.id,
-        });
-        await this.broadcast(room);
-    }
-
-    async destroy(room) {
-        const playerList = await this.getPlayerList(room);
-        await Promise.all(playerList.map(async player => {
-            return this.app.model.roomPlayer.leave(room, player, true);
-        }));
-        await this.delete({
-            id: room.id,
-        });
-        // todo clear broadcast queue & state
-    }
-
-    async list() {
-        return this.select({
-            orders: [['createdAt', 'desc']],
-        });
-    }
-
-    async isIn(room, user) {
-        const playerList = await this.getPlayerList(room);
-        let isIn = false;
-        playerList.forEach(player => {
-            isIn = isIn || (player.id === user.id);
-        });
-        return isIn;
-    }
-
-    async fetchState(room) {
-        return RoomState.load(room);
-    }
-
-    async broadcast(room) {
-        this.app.ioHelper.broadcast(this.nsp, room.id, await this.fetchState(room));
+    async clean() {
+        await this.stateManager.clean();
+        await this.passwordManager.clean();
     }
 }
 
-const ROOM_STATE_CACHE_PREFIX = 'model::room::roomState::';
+const STATE_CACHE_KEY = 'model::room:state';
 
-class RoomState {
-    static async load(room, app) {
-        return new RoomState(app, room, JSON.parse(await app.cache.get(`${ROOM_STATE_CACHE_PREFIX}${room.id}`)));
-    }
-
-    constructor(app, room, data) {
+class StateManager {
+    constructor(app) {
         this.app = app;
-        this.room = room;
-        this.data = {};
-        this.parse(data);
+        this.userStatusMap = {
+            FREE: 0,
+            READY: 1,
+        };
     }
 
-    parse(data) {
-        if (data === null) {
-            return;
+    async create(id, size, user) {
+        await this.save(id, {
+            id,
+            meta: {
+                createdAt: Date.now() / 1000 | 0,
+                createdBy: user.id,
+                password: await this.app.model.room.passwordManager.create(id),
+                size,
+                player: {},
+            },
+            game: null,
+        });
+        return this.join(id, user);
+    }
+
+    async load(id) {
+        return JSON.parse(await this.app.cache.hget(STATE_CACHE_KEY, id));
+    }
+
+    async save(id, data) {
+        return this.app.cache.hset(STATE_CACHE_KEY, id, JSON.stringify(data));
+    }
+
+    async del(id) {
+        return this.app.cache.hdel(STATE_CACHE_KEY, id);
+    }
+
+    async update(id, fn) {
+        return this.app.locker.run(`${STATE_CACHE_KEY}::${id}`, async () => {
+            let state = await this.load(id);
+            if (!state) {
+                throw this.app.config.errorCode.ROOM_NOT_EXISTS;
+            }
+            state = await fn(state);
+            await this.save(id, state);
+            return state;
+        });
+    }
+
+    async join(id, user) {
+        return this.update(id, async state => {
+            if (Object.keys(state.meta.player).length >= state.meta.size) {
+                throw this.app.config.errorCode.ROOM_IS_FULL;
+            }
+            state.meta.player[user.id] = {
+                name: user.name,
+                joinAt: Date.now() / 1000 | 0,
+                status: this.userStatusMap.FREE,
+            };
+            await this.app.model.session.setValue(user.id, 'roomId', id);
+            return state;
+        });
+    }
+
+    async leave(user) {
+        return this.update(user.roomId, async state => {
+            if (state.game) {
+                throw this.app.config.errorCode.ROOM_PLAYER_IS_PLAYING;
+            }
+            delete state.meta.player[user.id];
+            await this.app.model.session.setValue(user.id, 'roomId', null);
+            return state;
+        });
+    }
+
+    async ready(user) {
+        return this.update(user.roomId, async state => {
+            state.meta.player[user.id].status = this.userStatusMap.READY;
+            return state;
+        });
+    }
+
+    async clean() {
+        const map = await this.app.cache.hgetall(STATE_CACHE_KEY);
+        await Promise.all(Object.keys(map).map(async id => {
+            return this.app.locker.run(`${STATE_CACHE_KEY}::${id}`, async () => {
+                const state = await this.load(id);
+                if (Object.keys(state.meta.player).length) {
+                    return;
+                }
+                await this.del(id);
+            });
+        }));
+    }
+
+    async start() {
+        //return await this.app
+    }
+}
+
+const PASSWORD_CACHE_KEY = 'model::room:passwordManager';
+const MIN_PASSWORD_LEN = 6;
+
+class PasswordManager {
+    constructor(app) {
+        this.app = app;
+    }
+
+    async create(id) {
+        return this.app.locker.run(PASSWORD_CACHE_KEY, async () => {
+            const len = await this.calLen();
+            while (true) {
+                const password = Math.random().toString().substr(2, len);
+                if (await this.find(password)) {
+                    continue;
+                }
+                await this.app.cache.hset(PASSWORD_CACHE_KEY, password, id);
+                return password;
+            }
+        });
+    }
+
+    async find(password) {
+        return this.app.cache.hget(PASSWORD_CACHE_KEY, password);
+    }
+
+    async del(password) {
+        return this.app.cache.hdel(PASSWORD_CACHE_KEY, password);
+    }
+
+    async count() {
+        return this.app.cache.hlen(PASSWORD_CACHE_KEY);
+    }
+
+    async calLen() {
+        const count = await this.count();
+        for (let i = MIN_PASSWORD_LEN; ; i++) {
+            if (Math.pow(10, i - 1) > count) {
+                return i;
+            }
         }
     }
 
-    async save() {
-        const data = this.toJson();
-        await this.app.cache.set(`${ROOM_STATE_CACHE_PREFIX}${this.room.id}`, JSON.stringify(data));
-        return data;
-    }
-
-    toJson() {
-        return {
-            id: this.room.id,
-        };
+    async clean() {
+        const map = await this.app.cache.hgetall(PASSWORD_CACHE_KEY);
+        await Promise.all(Object.keys(map).map(async password => {
+            const id = map[password];
+            const room = await this.app.model.room.load(id);
+            if (!room) {
+                await this.del(password);
+            }
+        }));
     }
 }
 

@@ -1,12 +1,17 @@
 const Controller = require('egg').Controller;
 
 class BaseController extends Controller {
-    async fetchRoom(roomId) {
-        const room = await this.app.model.room.fetchById(roomId);
-        if (!room) {
-            throw this.app.config.errorCode.ROOM_NOT_EXISTS;
+    checkLogin() {
+        if (this.ctx.user === null) {
+            throw this.app.config.errorCode.PASSPORT_LOGIN_REQUIRED;
         }
-        return room;
+    }
+
+    checkInRoom() {
+        this.checkLogin();
+        if (!this.ctx.user.roomId) {
+            throw this.app.config.errorCode.ROOM_USER_NOT_IN;
+        }
     }
 }
 

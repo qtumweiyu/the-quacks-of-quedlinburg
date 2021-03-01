@@ -49,6 +49,10 @@ class Cache {
         return this.redis.hdel(`${this.prefix}::${key}`, ...args);
     }
 
+    async hlen(key, ...args) {
+        return this.redis.hlen(`${this.prefix}::${key}`, ...args);
+    }
+
     async del(key, ...args) {
         return this.redis.del(`${this.prefix}::${key}`, ...args);
     }
